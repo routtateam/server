@@ -5,6 +5,6 @@ dist/
 .DS_Store
 coverage/
 dev.sqlite3
-uploads/
+/uploads/
 .local-postgres/
 .test-uploads/
