@@ -1,0 +1,43 @@
+version: "3.9"
+
+# Local dev infrastructure for the Routta backend: PostgreSQL + Redis.
+# Usage: docker compose up -d
+# Then set DATABASE_URL / REDIS_URL in .env to match the values below
+# (the defaults in .env.example already match this file).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: routta-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: routta
+      POSTGRES_PASSWORD: routta
+      POSTGRES_DB: routta_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - routta_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U routta -d routta_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: routta-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - routta_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  routta_pg_data:
+  routta_redis_data:
