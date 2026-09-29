@@ -1,11 +1,12 @@
 // File storage behind a small interface so callers never know where bytes live.
-// Today: LocalDiskStorage (STORAGE_DRIVER=local, files under UPLOAD_DIR). To move to S3 later, implement
-// StorageProvider with @aws-sdk/client-s3 (put -> PutObject, get -> GetObject stream, delete -> DeleteObject)
-// and select it in getStorage(); nothing else in the codebase changes. Objects are always addressed by an
-// opaque, server-generated `key` — never by a client-supplied filename.
+// STORAGE_DRIVER=local (default): LocalDiskStorage, files under UPLOAD_DIR — no external dependency.
+// STORAGE_DRIVER=r2: Cloudflare R2 (S3-compatible), see ./r2.ts. Nothing outside this module knows or
+// cares which is active — same StorageProvider interface either way. Objects are always addressed by
+// an opaque, server-generated `key` — never by a client-supplied filename.
 import fs from "node:fs/promises";
 import path from "node:path";
 import { env } from "@/config/env";
+import { createR2StorageFromEnv } from "./r2";
 
 export interface StoredObject {
   key: string;
@@ -59,8 +60,13 @@ export class LocalDiskStorage implements StorageProvider {
 }
 
 let instance: StorageProvider | undefined;
+export function createStorageFromEnv(): StorageProvider {
+  if (env.storage.driver === "r2") return createR2StorageFromEnv();
+  return new LocalDiskStorage(env.storage.localDir);
+}
+
 export function getStorage(): StorageProvider {
-  if (!instance) instance = new LocalDiskStorage(env.storage.localDir);
+  if (!instance) instance = createStorageFromEnv();
   return instance;
 }
 

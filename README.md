@@ -134,10 +134,21 @@ All under `/api/v1`, envelope `{success,data}`, money in kobo. "R" = required ro
 - **Trip PIN.** `toTripDto(row, viewer)` in `trips.service.ts` is the single trip
   serialiser; `pin` is only emitted for the commuter viewer. Admin `reassign`
   strips it too. Driver verification is limited to 5 wrong attempts (HTTP 429).
-- **Storage.** `src/integrations/storage` exposes `StorageProvider`
-  (`put/get/delete`), implemented by `LocalDiskStorage` (`UPLOAD_DIR`). Keys are
-  server generated; there is no public static mount. For S3, implement the
-  interface and return it from `getStorage()`.
+- **Storage: two swappable providers.** `src/integrations/storage` exposes
+  `StorageProvider` (`put/get/delete`), picked by `createStorageFromEnv()`
+  based on `STORAGE_DRIVER` (`local` default, `r2` to opt in):
+  - `LocalDiskStorage` — files under `UPLOAD_DIR`. No external dependency.
+  - `R2Storage` (`src/integrations/storage/r2.ts`) — Cloudflare R2, S3-compatible,
+    via `@aws-sdk/client-s3` against `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`.
+    Requires `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`
+    — selecting `r2` without all four throws immediately at first use rather than
+    silently falling back (a document written to the wrong place is a correctness
+    bug, not something to degrade gracefully from).
+  Either way: keys are server-generated, objects are private, and there is no
+  public bucket/static mount — files are only ever served through the
+  authenticated `/api/v1/files` route (owner, or an admin with
+  `verifications.view`). Not live-tested against a real R2 bucket (needs real
+  credentials); covered by mocked unit tests in `tests/storage.test.ts`.
 - **Geocoding: two swappable providers.** `GeocodingProvider`
   (`src/modules/places/geocoding.ts`) has two implementations, picked by
   `getGeocodingProvider()` based on `GEOCODING_PROVIDER` (`db` default,

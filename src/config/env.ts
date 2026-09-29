@@ -104,9 +104,19 @@ export const env = {
   cancelFeeGraceSeconds: num("CANCEL_FEE_GRACE_SECONDS", 120),
 
   storage: {
-    driver: str("STORAGE_DRIVER", "local") as "local",
+    /** "local" = disk under UPLOAD_DIR (default, no external dependency). "r2" = Cloudflare R2
+     *  (S3-compatible) — see src/integrations/storage/r2.ts. Selecting "r2" without the r2.* vars
+     *  below fully configured throws at startup rather than silently falling back, since documents
+     *  written to the wrong place are a correctness problem, not a graceful-degradation one. */
+    driver: str("STORAGE_DRIVER", "local") as "local" | "r2",
     localDir: str("UPLOAD_DIR", "./uploads"),
     maxUploadBytes: num("MAX_UPLOAD_BYTES", 5 * 1024 * 1024),
+    r2: {
+      accountId: process.env.R2_ACCOUNT_ID,
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      bucket: process.env.R2_BUCKET,
+    },
   },
 
   verificationProvider: str("VERIFICATION_PROVIDER", "none"),
